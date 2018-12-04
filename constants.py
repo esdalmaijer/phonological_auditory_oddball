@@ -45,7 +45,7 @@ DEVIANT_TRIALS = { \
 ISI = (1200, 1200)
 
 # MEG SETTINGS
-MEGDUMMY = True
+MEGDUMMY = False
 TRIGGERCODES = { \
     "S":    101, \
     "Dw":   102, \
