@@ -1,11 +1,14 @@
 import copy
 import random
 
+import numpy
+
 from constants import *
 from pygaze.display import Display
 from pygaze.screen import Screen
-from pygaze.keyboard import Keyboard
 from pygaze.sound import Sound
+from pygaze.mouse import Mouse
+from pygaze.keyboard import Keyboard
 from pygaze.logfile import Logfile
 import pygaze.libtime as timer
 
@@ -30,6 +33,10 @@ else:
 # Initialise a Display to present messages for the researcher on.
 disp = Display()
 
+# Make sure that the mouse can be seen when hovering over.
+mouse = Mouse()
+mouse.set_visible(True)
+
 # Create a Screen for ad-hoc presentation. (We don't need pre-created screens,
 # as we are unconcerned with visual timing in this particular experiment.)
 scr = Screen()
@@ -53,6 +60,11 @@ log.write(["soundnr", "onset", "type", "name", "trigger"])
 # Create a MEGTriggerBox instance to send triggers to the MEG.
 meg = MEGTriggerBox()
 
+# Pre-create a pause screen.
+pause = Screen()
+pause.draw_text(text="Experiment PAUSED\n\n- Space to continue\n- Esc to kill prematurely.", \
+    fontsize=32)
+
 
 # # # # #
 # RANDOMISATION
@@ -60,6 +72,7 @@ meg = MEGTriggerBox()
 # Set the random seed.
 if RANDOMSEED is not None:
     random.seed(RANDOMSEED)
+    numpy.random.seed(RANDOMSEED)
 
 # Construct a sequence of all trials.
 deviant_order = []
@@ -84,7 +97,7 @@ for i, deviant_type in enumerate(deviant_order):
         "stimname": SOUNDTYPES[deviant_type],
         })
     # Add the in-between trials.
-    for j in range(random.choice(STANDARD_PADDING)):
+    for j in range(numpy.random.choice(STANDARD_PADDING, p=PADDING_PROB)):
         trials.append({ \
             "stimtype": "S", \
             "stimname": SOUNDTYPES["S"],
@@ -120,7 +133,7 @@ while t1 - t0 < delay_ms:
 
 # Present running message.        
 scr.clear()
-scr.draw_text(text="Running experiment. Press Esc or Q to kill prematurely.", \
+scr.draw_text(text="Running experiment...\n\n- Space to pause\n- Esc to kill prematurely.", \
     fontsize=32)
 disp.fill(scr)
 disp.show()
@@ -143,14 +156,34 @@ for i, trial in enumerate(trials):
     # Wait for the ISI by using it as a timeout to the keyboard, so that the
     # experimenter can kill the experiment at will.
     isi = random.randint(ISI[0], ISI[1]) - (timer.get_time()-t)
-    key, presstime = keyboard.get_key(keylist=["escape", "q"], timeout=isi)
+    key, presstime = keyboard.get_key(keylist=["escape", "space"], \
+        timeout=isi)
     # If the experimenter pressed the Escape or Q keys, kill the experiment.
     if key is not None:
-        meg.set_trigger_state(TRIGGERCODES["kill"], \
-            return_to_zero_ms=10)
-        log.write(["NaN", presstime, "EXPKILL", "EXPKILL", \
-            TRIGGERCODES["kill"]])
-        break
+        # Check if the experimenter pressed Space to pause the experiment.
+        if key == "space":
+            # Start the break.
+            disp.fill(pause)
+            disp.show()
+            meg.set_trigger_state(TRIGGERCODES["pause"], \
+                return_to_zero_ms=10)
+            # Wait for a Space press.
+            key, presstime = keyboard.get_key(keylist=["escape", "space"], \
+                timeout=None, flush=True)
+            # Re-present the experiment screen.
+            disp.fill(scr)
+            disp.show()
+            meg.set_trigger_state(TRIGGERCODES["unpause"], \
+                return_to_zero_ms=10)
+        # Check if the experimenter pressed Escape during the trial or during
+        # the pause.
+        if key in ["escape", "q"]:
+            # Break off the trial loop.
+            meg.set_trigger_state(TRIGGERCODES["kill"], \
+                return_to_zero_ms=10)
+            log.write(["NaN", presstime, "EXPKILL", "EXPKILL", \
+                TRIGGERCODES["kill"]])
+            break
 
 
 # # # # #

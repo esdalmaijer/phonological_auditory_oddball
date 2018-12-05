@@ -4,6 +4,7 @@
 # displayed in the foreground.
 
 import os
+import numpy
 
 
 # GENERAL SETTINGS
@@ -28,7 +29,12 @@ SOUNDTYPES = { \
 # Define how many standard sounds will occur between each deviant. This should
 # be a list of integers that define all potential number of occurences. They
 # will be (uniformly) randomly sampled from.
-STANDARD_PADDING = [2, 3, 4, 5]
+STANDARD_PADDING = [  2,   3,   4,   5]
+# Set the weights for each padding length.
+PADDING_WEIGHTS =  [120,  90,  70,  20]
+# Compute the probabilities for each padding length from their weights.
+PADDING_PROB = numpy.array(PADDING_WEIGHTS, dtype=float) \
+    / numpy.sum(PADDING_WEIGHTS)
 # Define the number of habituation sounds that will be played at the start of
 # the experiment. These will all be the standard sound.
 HABITUATION_TRIALS = 10
@@ -41,16 +47,20 @@ DEVIANT_TRIALS = { \
 # be sampled from a uniform distribution between the minimum and the maximum.
 # Note that the ISI is the difference between the onsets of sounds.
 # EDWIN NOTE: The original task had offset-onset intervals of 800 ms. Taking
-# into account the length of each sound (400 ms), the ISI should be 1200 ms.
-ISI = (1200, 1200)
+# into account the length of each sound (420 ms), the ISI should be 1200 ms.
+# The actual lengths of the sounds are: boak 386 ms, boap 387 ms, boat 460 ms,
+# but Amy used a sound length of 420 ms.
+ISI = (1220, 1220)
 
 # MEG SETTINGS
 MEGDUMMY = False
 TRIGGERCODES = { \
-    "S":    101, \
-    "Dw":   102, \
-    "Dp":   103, \
-    "kill":  19, \
+    "S":        101, \
+    "Dw":       102, \
+    "Dp":       103, \
+    "kill":      19, \
+    "pause":     18, \
+    "unpause":   17, \
     }
 
 # DISPLAY SETTINGS
